@@ -1,0 +1,14 @@
+version: '3'
+
+services:
+  ironfist:
+    build: .
+    container_name: ironfist
+    restart: always
+    ports:
+      - "14742:14742"
+    volumes:
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+    environment:
+      - TZ=Asia/Shanghai

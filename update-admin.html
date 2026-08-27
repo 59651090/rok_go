@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoGo 热更新管理</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f7fa;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+        h1 {
+            margin: 0 0 8px 0;
+            font-size: 24px;
+        }
+        .subtitle {
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+        .section {
+            margin-bottom: 24px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid #eee;
+        }
+        .section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        .form-row {
+            margin-bottom: 16px;
+        }
+        label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+        input[type="text"],
+        input[type="url"],
+        input[type="file"] {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d9d9d9;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        input[type="text"]:focus,
+        input[type="url"]:focus {
+            outline: none;
+            border-color: #4096ff;
+        }
+        .hint {
+            font-size: 12px;
+            color: #888;
+            margin-top: 4px;
+        }
+        .arch-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+            margin-top: 8px;
+        }
+        .arch-card {
+            border: 1px solid #e8e8e8;
+            border-radius: 8px;
+            padding: 16px;
+            background: #fafafa;
+        }
+        .arch-card h3 {
+            margin: 0 0 12px 0;
+            font-size: 15px;
+            color: #1677ff;
+        }
+        .file-name {
+            font-size: 13px;
+            color: #52c41a;
+            margin-top: 6px;
+            word-break: break-all;
+        }
+        .file-empty {
+            color: #999;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .btn-primary {
+            background: #1677ff;
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background: #4096ff;
+        }
+        .btn-success {
+            background: #52c41a;
+            color: #fff;
+        }
+        .btn-success:hover {
+            background: #73d13d;
+        }
+        .btn:disabled {
+            background: #d9d9d9;
+            cursor: not-allowed;
+        }
+        .json-preview {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: "Consolas", "Monaco", monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 12px;
+        }
+        .status {
+            margin-top: 12px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: none;
+        }
+        .status.success {
+            background: #f6ffed;
+            color: #389e0d;
+            border: 1px solid #b7eb8f;
+            display: block;
+        }
+        .status.error {
+            background: #fff2f0;
+            color: #cf1322;
+            border: 1px solid #ffccc7;
+            display: block;
+        }
+        .status.info {
+            background: #e6f4ff;
+            color: #0958d9;
+            border: 1px solid #91caff;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AutoGo 热更新管理</h1>
+        <div class="subtitle">配置版本号、上传各架构二进制、生成 go.json</div>
+
+        <div class="section">
+            <div class="form-row">
+                <label for="version">版本号</label>
+                <input type="text" id="version" placeholder="例如: 3" value="3">
+                <div class="hint">每次发版必须比之前大,客户端 currentVersion 比它小才会下载;上传时后端会按这个版本号创建文件夹</div>
+            </div>
+
+            <div class="form-row">
+                <label for="requestUrl">热更新请求地址(go.json 地址)</label>
+                <input type="url" id="requestUrl" placeholder="http://122.51.125.67:14741/go.json" value="http://122.51.125.67:14741/go.json">
+                <div class="hint">填 go.json 的完整地址,其他地址会自动从这里推导</div>
+            </div>
+
+            <div class="form-row">
+                <label>自动推导上传地址</label>
+                <input type="text" id="derivedUploadUrl" readonly placeholder="会自动显示">
+                <div class="hint">上传时会把文件发到该地址,后端需在此接口里按 version 创建文件夹</div>
+            </div>
+
+            <div class="form-row">
+                <label>本次文件将放入目录</label>
+                <input type="text" id="versionFolder" readonly placeholder="会自动显示">
+            </div>
+        </div>
+
+        <div class="section">
+            <label>各架构二进制文件</label>
+            <div class="arch-grid">
+                <div class="arch-card">
+                    <h3>arm64 (真机)</h3>
+                    <input type="file" id="file-arm64" accept="*/*">
+                    <div class="file-name file-empty" id="name-arm64">未选择文件</div>
+                </div>
+                <div class="arch-card">
+                    <h3>arm32 (真机 32 位)</h3>
+                    <input type="file" id="file-arm32" accept="*/*">
+                    <div class="file-name file-empty" id="name-arm32">未选择文件</div>
+                </div>
+                <div class="arch-card">
+                    <h3>x86_64 (模拟器 64 位)</h3>
+                    <input type="file" id="file-x8664" accept="*/*">
+                    <div class="file-name file-empty" id="name-x8664">未选择文件</div>
+                </div>
+                <div class="arch-card">
+                    <h3>x86 (模拟器 32 位)</h3>
+                    <input type="file" id="file-x8632" accept="*/*">
+                    <div class="file-name file-empty" id="name-x8632">未选择文件</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <button class="btn btn-primary" onclick="generateJson()">生成 go.json</button>
+            <button class="btn btn-success" onclick="uploadAll()" id="uploadBtn">上传到服务器</button>
+            <button class="btn btn-primary" onclick="downloadJson()">下载 go.json</button>
+
+            <div class="json-preview" id="jsonPreview">// 点击"生成 go.json"后这里会显示配置内容</div>
+
+            <div class="status" id="status"></div>
+        </div>
+    </div>
+
+    <script>
+        const archMap = {
+            arm64: { jsonKey: 'arm64', fileName: 'arm64-v8a-release-packso' },
+            arm32: { jsonKey: 'arm32', fileName: 'armeabi-v7a-release-packso' },
+            x8664: { jsonKey: 'x8664', fileName: 'x86_64-release-packso' },
+            x8632: { jsonKey: 'x8632', fileName: 'x86-release-packso' }
+        };
+
+        const files = {};
+
+        // 监听文件选择
+        Object.keys(archMap).forEach(key => {
+            const input = document.getElementById('file-' + key);
+            input.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                const nameEl = document.getElementById('name-' + key);
+                if (file) {
+                    files[key] = file;
+                    nameEl.textContent = '已选择: ' + file.name;
+                    nameEl.classList.remove('file-empty');
+                } else {
+                    delete files[key];
+                    nameEl.textContent = '未选择文件';
+                    nameEl.classList.add('file-empty');
+                }
+            });
+        });
+
+        // 从 go.json 地址推导基础目录
+        // 例如 http://122.51.125.67:14741/go.json -> http://122.51.125.67:14741/
+        function deriveBaseUrl() {
+            let url = document.getElementById('requestUrl').value.trim();
+            if (!url) {
+                url = 'http://122.51.125.67:14741/go.json';
+                document.getElementById('requestUrl').value = url;
+            }
+            // 去掉末尾的 go.json 或文件名,保留目录
+            let base = url;
+            try {
+                const u = new URL(url);
+                const path = u.pathname;
+                const lastSlash = path.lastIndexOf('/');
+                if (lastSlash !== -1) {
+                    u.pathname = path.substring(0, lastSlash + 1);
+                }
+                base = u.toString();
+            } catch (e) {
+                // 简单兜底:去掉 go.json
+                base = url.replace(/go\.json$/i, '').replace(/\/[^/]*$/, '/');
+            }
+            if (!base.endsWith('/')) base += '/';
+            return base;
+        }
+
+        // 推导上传地址:基础目录 + upload
+        function deriveUploadUrl() {
+            return deriveBaseUrl() + 'upload';
+        }
+
+        // 更新页面上推导出的地址显示
+        function updateDerivedInfo() {
+            const version = document.getElementById('version').value.trim() || '3';
+            const baseUrl = deriveBaseUrl();
+            document.getElementById('derivedUploadUrl').value = deriveUploadUrl();
+            document.getElementById('versionFolder').value = baseUrl + version + '/';
+        }
+
+        // 输入变化时自动更新推导信息
+        document.getElementById('requestUrl').addEventListener('input', updateDerivedInfo);
+        document.getElementById('version').addEventListener('input', updateDerivedInfo);
+
+        function getBaseUrl() {
+            return deriveBaseUrl();
+        }
+
+        function buildConfig() {
+            const version = document.getElementById('version').value.trim() || '3';
+            const baseUrl = getBaseUrl();
+            // 文件放入版本号子目录,例如 .../3/arm64-v8a-release-packso
+            const versionedBaseUrl = baseUrl + version + '/';
+            const config = {
+                version: version,
+                arm64: [],
+                arm32: [],
+                x8664: [],
+                x8632: [],
+                md5: []
+            };
+
+            Object.keys(archMap).forEach(key => {
+                const cfg = archMap[key];
+                if (files[key]) {
+                    config[cfg.jsonKey].push(versionedBaseUrl + cfg.fileName);
+                } else {
+                    config[cfg.jsonKey].push('');
+                }
+            });
+
+            return config;
+        }
+
+        function generateJson() {
+            updateDerivedInfo();
+            const config = buildConfig();
+            document.getElementById('jsonPreview').textContent = JSON.stringify(config, null, 2);
+            showStatus('go.json 已生成', 'success');
+        }
+
+        function downloadJson() {
+            updateDerivedInfo();
+            const config = buildConfig();
+            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'go.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showStatus('go.json 已下载', 'success');
+        }
+
+        async function uploadAll() {
+            updateDerivedInfo();
+            const endpoint = deriveUploadUrl();
+            const version = document.getElementById('version').value.trim() || '3';
+
+            const config = buildConfig();
+            const formData = new FormData();
+
+            // 版本号,后端拿到后创建对应文件夹
+            formData.append('version', version);
+
+            // 添加 go.json
+            const jsonBlob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+            formData.append('go.json', jsonBlob, 'go.json');
+
+            // 添加各架构文件
+            Object.keys(archMap).forEach(key => {
+                if (files[key]) {
+                    const cfg = archMap[key];
+                    formData.append(cfg.fileName, files[key], cfg.fileName);
+                }
+            });
+
+            const btn = document.getElementById('uploadBtn');
+            btn.disabled = true;
+            btn.textContent = '上传中...';
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    showStatus('上传成功: ' + await response.text(), 'success');
+                } else {
+                    showStatus('上传失败: HTTP ' + response.status, 'error');
+                }
+            } catch (err) {
+                showStatus('上传错误: ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '上传到服务器';
+            }
+        }
+
+        function showStatus(msg, type) {
+            const el = document.getElementById('status');
+            el.textContent = msg;
+            el.className = 'status ' + type;
+        }
+
+        // 页面加载时先更新一次推导信息
+        updateDerivedInfo();
+    </script>
+</body>
+</html>

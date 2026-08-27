@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+      <meta charset="UTF-8">
+      <!--加载本地地址-->
+<!--  <link rel="stylesheet" href="assets/element-plus.css"/>-->
+<!--  <script src="./assets/vue3.5.12.js"></script>-->
+<!--  <script src="./assets/element-plus.js"></script>-->
+<!--  <script src="./assets/form-create-element-ui.js"></script>-->
+      <!--加载网络地址-->
+      <link rel="stylesheet" href="http://unpkg.com/element-plus/dist/index.css"/>
+      <script src="http://unpkg.com/vue@3"></script>
+      <script src="http://unpkg.com/element-plus"></script>
+      <script src="http://unpkg.com/@form-create/element-ui@3"></script>
+  </head>
+  <body>
+      <div id="app">
+          <form-create :rule="rule" :option="options" v-model="formData" v-model:api="api" @submit="onSubmit"></form-create>
+      </div>
+      <script>
+          const App = {
+              data() {
+                  return {
+                      rule: [{"type":"elTabs","style":{"width":"100%"},"children":[{"type":"elTabPane","props":{"label":"主界面"},"children":[{"type":"elTag","title":"","native":true,"children":["123455555"],"_fc_id":"id_Fguhmqnm0hp1cvc","name":"ref_F6b7mqnm0hp1cwc","display":true,"hidden":false,"_fc_drag_tag":"elTag"},{"type":"input","field":"Fdw7mqnj4lmwabc","title":"输入框","info":"","$required":false,"_fc_id":"id_Fxs5mqnj4lmwacc","name":"ref_F8phmqnj4lmwadc","display":true,"hidden":false,"_fc_drag_tag":"input","props":{"maxlength":20,"clearable":false}},{"type":"radio","field":"功能选择","title":"功能","info":"","$required":false,"props":{"_optionType":2},"_fc_id":"id_Frzlmqnj4sq3afc","name":"ref_Faf1mqnj4sq3agc","display":true,"hidden":false,"_fc_drag_tag":"radio","options":[{"label":"默认队伍采集混","value":"1"},{"label":"只帮助","value":"2"},{"label":"宝石-未完成","value":"3"}]},{"type":"fcRow","children":[{"type":"col","props":{"span":12},"_fc_id":"id_F7q9mqnm4gild1c","name":"ref_F5knmqnm4gild2c","display":true,"hidden":false,"_fc_drag_tag":"col"},{"type":"col","props":{"span":12},"children":[{"type":"elButton","props":{"size":"large","round":false,"loading":false,"disabled":false,"plain":false,"type":"primary"},"children":["开始"],"_fc_id":"id_F1lqmqnk4rqcaqc","name":"ref_F7s0mqnj768zalc","display":true,"hidden":false,"_fc_drag_tag":"elButton","on":{"click":"$FNX:"}}],"_fc_id":"id_Fj6omqnm4gild3c","name":"ref_Fbj6mqnm4gild4c","display":true,"hidden":false,"_fc_drag_tag":"col"}],"_fc_id":"id_Fps2mqnm4gilczc","name":"ref_Frxpmqnm4gild0c","display":true,"hidden":false,"_fc_drag_tag":"fcRow"}],"_fc_id":"id_F2xnmqnls2v1b1c","name":"ref_Fo5hmqnls2v1b2c","display":true,"hidden":false,"_fc_drag_tag":"elTabPane"}],"_fc_id":"id_F8lvmqnls2v1azc","name":"ref_F59dmqnls2v1b0c","display":true,"hidden":false,"_fc_drag_tag":"elTabs","props":{"type":"card","closable":false,"tabPosition":"top","stretch":false}}],
+                      options: {"form":{"inline":false,"hideRequiredAsterisk":false,"labelPosition":"left","size":"default","labelWidth":"","labelSuffix":""},"resetBtn":{"show":false,"innerText":"重置"},"submitBtn":{"show":true,"innerText":"提交"},"formName":"主界面"},
+                      formData: {},
+                      api: null,
+                  };
+              },
+              mounted(){
+                let formData=JSON.parse(localStorage.getItem("UI"))
+                let fields=this.api.fields();
+                for (let key in formData) {
+                    if (!fields.includes(key)) {
+                        delete formData[key];
+                    }
+                }
+                console.log(formData);
+                this.api.setValue(formData)
+              },
+              methods: {
+                onSubmit(formData) {
+                    localStorage.clear()
+                    localStorage.setItem('UI', JSON.stringify(formData))
+                    let data = JSON.stringify(formData)
+                    console.log(data);
+                    try {this.Ascript_Android(data)} catch (e) {}
+                    try {this.Ascript_IOS(data)} catch (e) {}
+                    try {this.LR_高级版静态UI(data)} catch (e) {}
+                    try {this.AutoGO(data)} catch (e) {}
+                },
+                Ascript_Android(data) {
+                    console.log("发送数据到ascript Android",data)
+                    airscript.save("UI", data)
+                    airscript.call("close", true)
+                },
+                Ascript_IOS(data) {
+                  console.log("发送数据到ascript IOS",data)
+                  ascript.save("UI", data)
+                  ascript.call("close", true)
+                },
+                LR_高级版静态UI(data){
+                    console.log("发送数据到懒人高级版",data)
+                    let savepath = "/sdcard/uiConfig.txt";
+                    window.bridge.writeStringToFile(savepath,data);
+                    window.bridge.sendToLua("提交")
+                },
+                AutoGO(data) {
+                  console.log("发送数据到AutoGO",data)
+                  fetch('/ui-callback', {
+                      method: 'POST',
+                      headers: {
+                          'Content-Type': 'application/json',
+                      },
+                      body: data
+                  })
+                  .then(response => response.json())
+                  .then(data => {
+                      console.log('Success:', data);
+                  })
+                  .catch((error) => {
+                      console.error('Error:', error);
+                  });
+                },
+              }
+          };
+          const app = Vue.createApp(App);
+          app.use(ElementPlus).use(formCreate);
+          app.mount("#app");
+      </script>
+  </body>
+</html>
