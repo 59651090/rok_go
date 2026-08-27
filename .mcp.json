@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "autogo": {
+      "command": "npx",
+      "args": ["-y", "autogo-mcp"],
+      "env": {
+        "AUTOGO_AG_PATH": "C:\\Users\\Public\\ag.exe"
+      }
+    }
+  }
+}
